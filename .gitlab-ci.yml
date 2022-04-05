@@ -1,0 +1,39 @@
+#   Copyright (c) 2022, Planet Innovation
+#   436 Elgar Road, Box Hill VIC 3128 Australia
+#   Phone: +61 3 9945 7510
+#
+#   The copyright to the computer program(s) herein is the property of
+#   Planet Innovation, Australia.
+#   The program(s) may be used and/or copied only with the written permission
+#   of Planet Innovation or in accordance with the terms and conditions
+#   stipulated in the agreement/contract under which the program(s) have been
+#   supplied.
+
+variables:
+  GIT_SUBMODULE_STRATEGY: normal
+
+stages:
+  - quality
+  - test
+
+image: $CI_REGISTRY/degraves/micropython_build_env_docker
+
+checks:
+  image: $CI_REGISTRY/spring/docker-images/ci_tools:2.0
+  stage: quality
+  tags: ["aws-525-degraves"]
+  script:
+    - pre-commit install
+    - pre-commit run --all-files --show-diff-on-failure
+
+unit_test:
+  stage: test
+  tags: ["aws-525-degraves"]
+  script:
+    - make tests
+  artifacts:
+    expire_in: 1 week
+    when: always
+    reports:
+      junit:
+        - src/unix/unittest/test_*.xml
