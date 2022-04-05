@@ -1,0 +1,45 @@
+import unittest
+
+from hardware_revision import HardwareRevision
+from mock_machine import MockPin, MockSPI
+
+
+class TestHardwareRevision(unittest.TestCase):
+    def setUp(self):
+        self.pin_0 = MockPin("D0", MockPin.IN)
+        self.pin_1 = MockPin("D1", MockPin.IN)
+        self.spi = MockSPI()
+        self.cs = MockPin("SPI1_CS1")
+        self.hardware_revision = HardwareRevision(
+            self.pin_0, self.pin_1, self.spi, self.cs
+        )
+
+    def test_hardware_revision_returns_0(self):
+        self.pin_0.value(0)
+        self.pin_1.value(0)
+        self.assertEqual(self.hardware_revision.read(), 0)
+
+    def test_hardware_revision_returns_1(self):
+        self.pin_0.value(1)
+        self.pin_1.value(0)
+        self.assertEqual(self.hardware_revision.read(), 1)
+
+    def test_hardware_revision_returns_2(self):
+        self.pin_0.value(0)
+        self.pin_1.value(1)
+        self.assertEqual(self.hardware_revision.read(), 2)
+
+    def test_hardware_revision_returns_3(self):
+        self.pin_0.value(1)
+        self.pin_1.value(1)
+        self.assertEqual(self.hardware_revision.read(), 3)
+
+    def test_hardware_revision_reads_spi_size(self):
+        self.spi.readbuf = b"\x9F\xC2\x23\x15"  # RDID for MX25V1635F
+        self.assertEqual(self.hardware_revision.read_spi_flash_size(), 2 * 1024 * 1024)
+        self.spi.readbuf = b"\x9F\xC2\x20\x19"  # RDID for MX25L25673G
+        self.assertEqual(self.hardware_revision.read_spi_flash_size(), 32 * 1024 * 1024)
+
+
+if __name__ == "__main__":
+    unittest.main()
