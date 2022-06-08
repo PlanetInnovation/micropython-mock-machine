@@ -16,7 +16,7 @@ tmp117 driver taken from radiata
 
 import struct
 
-#from micropython import const
+# from micropython import const
 
 
 class TMP117:
@@ -34,7 +34,7 @@ class TMP117:
         self._check_device()
 
     def _check_device(self):
-        """Check basic comms; REG_DEVICE_ID should always be 0x0117 """
+        """Check basic comms; REG_DEVICE_ID should always be 0x0117"""
         id_ = self._i2c.readfrom_mem(self._addr, TMP117.REG_DEVICE_ID, 2)
         unpacked = struct.unpack(">H", id_)  # ">H" == big endian, two bytes, unsigned
         if unpacked[0] != 0x0117:

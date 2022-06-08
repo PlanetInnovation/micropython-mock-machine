@@ -12,159 +12,328 @@
 # supplied.
 
 """
-Mock machine module that can be used in unit tests to test drivers
+Mock machine module that can be used in unit tests to test drivers.
 
-Current:
-    - I2C
-    - SPI
-    - Pin
-    - ADC
+Currently implements: ADC, I2C, Pin, SPI
 """
 
-class MockI2C: 
+import errno
+
+# Not concerned about unused arguments in mocks
+# pylint: disable=unused-argument
+
+
+class I2CDevice:
     """
-    Unittest support class for machine.I2C
+    A single I2C device added to a mock_machine.I2C bus.
     """
 
-    def __init__(self, id=None, *, scl=None, sda=None , freq=400000):
-        """
-        Construct and return a new I2C object
-        Initialise mock I2C with register values
-        """
+    def __init__(self, addr, i2c):
+        self.addr = addr
 
+        # Dict of buffers used for addressed operations
         self.register_values = {}
 
-    # General methods
-    def init(scl, sda, *, freq=400000):
-        """
-        Initialise the I2C bus
-        """
-        pass
+        # A buffer used for non-addressed reads
+        self.readbuf = bytes()
 
-    def deinit():
-        """
-        Turn off the I2C bus
-        """
-        pass
-
-    def scan():
-        """
-        Scan all I2C addresses between 0x08 and 0x77 inclusive and return a list of those that respond.
-        """
-        pass
+        # Add self to I2C
+        i2c.add_device(self)
 
     # Standard bus operations
-    def readfrom(addr, nbytes, stop=True,/):
+    def readfrom(self, nbytes, stop=True):
         """
-        Read nbytes from the peripheral specified by addr. 
-        If stop is true then a STOP condition is generated at the end of the transfer.
+        Read nbytes from the peripheral.
+
         Returns a bytes object with the data read.
         """
-        pass
+        if len(self.readbuf) < nbytes:
+            raise ValueError(f"Insufficient bytes to read {nbytes=} with readfrom()")
+        buf = self.readbuf[:nbytes]
+        return buf
 
-    def readfrom_into(addr, bug, stop=True,/):
+    def readfrom_into(self, buf, stop=True):
         """
-        Read into buf from the peripheral specified by addr. 
-        The number of bytes read will be the length of buf. 
-        If stop is true then a STOP condition is generated at the end of the transfer.
+        Read into buf from the peripheral.
+
+        The number of bytes read will be the length of buf.
+
         The method returns None.
         """
-        pass
+        if len(self.readbuf) < len(buf):
+            raise ValueError(f"Insufficient bytes to read {len(buf)} with readfrom_into()")
+        buf[:] = self.readbuf[: len(buf)]
 
-    def writeto(self, addr, buf, stop=True,/):
+    @staticmethod
+    def writeto(buf, stop=True):
         """
-        Write the bytes from buf to the peripheral specified by addr. 
-        If a NACK is received following the write of a byte from buf then the remaining bytes are not sent. 
-        If stop is true then a STOP condition is generated at the end of the transfer, even if a NACK is received. 
+        Write the bytes from buf to the peripheral.
+
+        If a NACK is received following the write of a byte from buf then the remaining bytes are
+        not sent.
+
+        If `writeto` is required for a peripheral, then this function will need to be overridden
+        with desired functionality. Otherwise this function defaults to ACK for all bytes.
+
         The function returns the number of ACKs that were received.
         """
-        pass
+        return len(buf)
 
     # Memory operations
-    def readfrom_mem(self, addr, memaddr, nbytes, *, addrsize=8):
+    def readfrom_mem(self, memaddr, nbytes):
         """
-        Read nbytes from the peripheral specified by addr starting from the memory address specified by memaddr. 
-        The argument addrsize specifies the address size in bits. Returns a bytes object with the data read.
+        Read nbytes from the peripheral starting at memaddr.
+
+        Returns a bytes object with the data read.
         """
         if memaddr not in self.register_values:
-            raise ValueError("Register not known")  # fixme: Which register
-        if len(self.register_values[memaddr]) != nbytes:
-            raise ValueError("Unexpected length")  # fixme: Improve error report
-        return self.register_values[memaddr]
+            raise IndexError(
+                f"Unknown memory address {memaddr=}",
+            )
+        if len(self.register_values[memaddr]) < nbytes:
+            raise ValueError(f"Insufficient bytes to read {nbytes=} from {memaddr=}")
+        buf = self.register_values[memaddr][:nbytes]
+        return buf
 
-    def readfrom_mem_into(addr, memaddr, buf, *, addrsize=8):
+    def readfrom_mem_into(self, memaddr, buf):
         """
-        Read into buf from the peripheral specified by addr starting from the memory address specified by memaddr. 
-        The number of bytes read is the length of buf. The argument addrsize specifies the address size in bits
+        Read into buf from the peripheral specified by addr, starting at memaddr.
+
+        The number of bytes read is the length of buf. The argument addrsize specifies the address
+        size in bits.
+
         The method returns None.
         """
-        pass
+        if memaddr not in self.register_values:
+            raise IndexError(
+                f"Unknown memory address {memaddr=:x}",
+            )
+        if len(self.register_values[memaddr]) < len(buf):
+            raise ValueError(f"Insufficient bytes to read {len(buf)=} from {memaddr=}")
+        buf[:] = self.register_values[memaddr][: len(buf)]
 
-    def writeto_mem(addr, memaddr, buf, *, addrsize=8):
+    def writeto_mem(self, memaddr, buf):
         """
-        Write buf to the peripheral specified by addr starting from the memory address specified by memaddr. 
-        The argument addrsize specifies the address size in bits 
+        Write buf to the peripheral specified by addr, starting at memaddr.
+
+        The number of bytes written is the length of buf. The argument addrsize specifies the
+        address size in bits.
+
         The method returns None.
         """
-        pass
+        self.register_values[memaddr] = buf
 
-class MockSPI:
+
+class I2C:
+    """
+    Unittest support class for machine.I2C.
+    """
+
+    def __init__(
+        self, *args, id=None, scl=None, sda=None, freq=400000
+    ):  # pylint: disable=unused-argument,redefined-builtin
+        """
+        Construct a new I2C object.
+
+        Initialise mock I2C with register values.
+        """
+        self.devices = {}
+
+    # Device management methods
+    def add_device(self, device):
+        """
+        Add I2CDevice at address I2CDevice.address.
+        """
+        if device.addr in self.devices:
+            raise ValueError("Device with given address already on bus.")
+        self.devices[device.addr] = device
+
+    # General methods
+    def init(self, scl, sda, *args, freq=400000):
+        """
+        Initialise the I2C bus.
+        """
+
+    def deinit(self):
+        """
+        Turn off the I2C bus.
+        """
+
+    def scan(self):
+        """
+        Scan I2C for responding devices.
+
+        Scans all I2C addresses between 0x08 and 0x77 inclusive and return a list of those that
+        respond.
+
+        Returns a list of addresses that responded to the scan.
+        """
+        scan_list = []
+        for addr in self.devices:
+            if 0x08 <= addr <= 0x77:
+                scan_list.append(addr)
+        return scan_list
+
+    # Standard bus operations
+    def readfrom(self, addr, nbytes, stop=True):
+        """
+        Read nbytes from the peripheral specified by addr.
+
+        If stop is true then a STOP condition is generated at the end of the transfer.
+
+        Returns a bytes object with the data read.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        return self.devices[addr].readfrom(nbytes, stop)
+
+    def readfrom_into(self, addr, buf, stop=True):
+        """
+        Read into buf from the peripheral specified by addr.
+
+        The number of bytes read will be the length of buf. If stop is true then a STOP condition
+        is generated at the end of the transfer.
+
+        The method returns None.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        return self.devices[addr].readfrom_into(buf, stop)
+
+    def writeto(self, addr, buf, stop=True):
+        """
+        Write the bytes from buf to the peripheral specified by addr.
+
+        If a NACK is received following the write of a byte from buf then the remaining bytes are
+        not sent. If stop is true then a STOP condition is generated at the end of the transfer,
+        even if a NACK is received.
+
+        The function returns the number of ACKs that were received.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        return self.devices[addr].writeto(buf, stop)
+
+    # Memory operations
+    def readfrom_mem(
+        self, addr, memaddr, nbytes, *args, addrsize=8
+    ):  # pylint: disable=unused-argument
+        """
+        Read nbytes from the peripheral specified by addr, starting at memaddr.
+
+        Starting from the memory address specified by memaddr. The argument addrsize specifies the
+        address size in bits.
+
+        Returns a bytes object with the data read.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        return self.devices[addr].readfrom_mem(memaddr, nbytes)
+
+    def readfrom_mem_into(self, addr, memaddr, buf, *args, addrsize=8):
+        """
+        Read into buf from the peripheral specified by addr, starting at memaddr.
+
+        The number of bytes read is the length of buf. The argument addrsize specifies the address
+        size in bits.
+
+        The method returns None.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        return self.devices[addr].readfrom_mem_into(memaddr, buf)
+
+    def writeto_mem(self, addr, memaddr, buf, *args, addrsize=8):
+        """
+        Write buf to the peripheral specified by addr, starting at memaddr.
+
+        The number of bytes written is the length of buf. The argument addrsize specifies the
+        address size in bits.
+
+        The method returns None.
+        """
+        if addr not in self.devices:
+            raise OSError(errno.ENODEV)
+        self.devices[addr].writeto_mem(memaddr, buf)
+
+
+class SPI:
     """
     Unittest support class for machine.SPI
     """
 
-    def __init__(self, id=None):
+    def __init__(self, id=None):  # pylint: disable=unused-argument,redefined-builtin
         """
         Construct an SPI object on the given bus, id.
         """
         self.readbuf = b""
 
     # SPI Methods
-    def init(self, baudrate=1000000, *, polarity=0, phase=0, bits=8, firstbit=None, sck=None, mosi=None, miso=None, pins=None):
+    def init(
+        self,
+        baudrate=1000000,
+        *,
+        polarity=0,
+        phase=0,
+        bits=8,
+        firstbit=None,
+        sck=None,
+        mosi=None,
+        miso=None,
+        pins=None,
+    ):
         """
         Initialise the SPI bus with the given parameters
         """
-        pass
 
-    def deinit():
+    def deinit(self):
         """
         Turn off the SPI bus
         """
-        pass
 
-    def read(self, nbytes, write=0x00):
+    def read(self, nbytes, write=0x00):  # pylint: disable=unused-argument
         """
-        Read a number of bytes specified by nbytes while continuously writing the single byte given by write. 
+        Read a number of bytes specified by nbytes.
+
+        Continuously writes the single byte given by write, to ensure read data is clocked.
+
         Returns a bytes object with the data that was read.
         """
         return self.readbuf[:nbytes]
 
-    def readinto(buf, write=0x00):
+    def readinto(self, buf, write=0x00):
         """
-        Read into the buffer specified by buf while continuously writing the single byte given by write. 
+        Read into the buffer specified by buf.
+
+        Number of bytes read is the length of the buffer.
+        Continuously writing the single byte given by write, to ensure read data is clocked.
+
         Returns None.
         """
-        pass
 
-    def write(buf):
+    def write(self, buf):
         """
-        Write the bytes contained in buf. 
+        Write the bytes contained in buf.
+
         Returns None.
         """
-        pass
 
-    def write_readinto(write_buf, read_buf):
+    def write_readinto(self, write_buf, read_buf):
         """
-        Write the bytes from write_buf while reading into read_buf. 
-        The buffers can be the same or different, but both buffers must have the same length. 
+        Write the bytes from write_buf while reading into read_buf.
+
+        The buffers can be the same or different, but both buffers must have the same length.
+
         Returns None.
         """
-        pass
 
-class MockPin:
+
+class Pin:
     """
     Unittest support class for machine.Pin
+
     Allows manual setting of input or output pin's value.
+
     Taken from radiata/src/firmware/test/mocks.py
     """
 
@@ -207,9 +376,11 @@ class MockPin:
     def __call__(self, x=None):
         return self.value(x)
 
-class MockADC:
+
+class ADC:
     """
-    Test support class for machine.ADC.
+    Unittest support class for machine.ADC.
+
     Modified from radiata/src/firmware/test/mocks.py
     """
 
@@ -218,30 +389,30 @@ class MockADC:
         self.value_u16 = 0
 
     # Methods
-    def init(*, sample_ns, atten):
+    def init(self, *, sample_ns, atten):
         """
-        Apply the given settings to the ADC. 
+        Apply the given settings to the ADC.
+
         Only those arguments that are specified will be changed.
         """
-        pass
 
-    def block():
+    def block(self):
         """
         Return the ADCBlock instance associated with this ADC object.
         """
-        pass
 
     def read_u16(self):
         """
-        Take an analog reading and return an integer in the range 0-65535. 
-        The return value represents the raw reading taken by the ADC
+        Take an analog reading and return an integer in the range 0-65535.
+
+        The return value represents the raw reading taken by the ADC.
         """
         return self.value_u16
 
-    def read_uv():
+    def read_uv(self):
         """
-        Take an analog reading and return an integer value with units of microvolts. 
-        It is up to the particular port whether or not this value is calibrated, and how calibration is done.
-        """
-        pass
+        Take an analog reading and return an integer value with units of microvolts.
 
+        It is up to the particular port whether or not this value is calibrated, and how
+        calibration is done.
+        """

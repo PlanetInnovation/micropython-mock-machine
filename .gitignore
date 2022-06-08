@@ -17,6 +17,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Ignore vim temporary and swap files
+*~
+*.sw[a-p]
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json

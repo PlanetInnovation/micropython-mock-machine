@@ -17,9 +17,8 @@ Test case taken from radiata used to test the tmp117 driver
 import unittest
 from collections import namedtuple
 
-from tmp117 import TMP117
-
-from mock_machine import MockI2C
+from examples.tmp117 import TMP117
+from mock_machine import I2C, I2CDevice
 
 TestCase = namedtuple("TestCase", ["temperature", "bytes"])
 
@@ -40,26 +39,26 @@ TEST_CASES = [
 
 class TestImagingModuleADC(unittest.TestCase):
     def setUp(self):
-        
-        self.fake = MockI2C()
+        # Make a mock I2C bus with mock I2C device added to it
+        self.i2c = I2C()
+        self.device = I2CDevice(TMP117.I2C_ADDR, self.i2c)
 
     def test_bad_device_id_register_fails_to_init(self):
-        with self.assertRaises(ValueError):
-            TMP117(self.fake)
+        with self.assertRaises(IndexError):
+            TMP117(self.i2c)
 
     def test_tmp117_initialises_with_valid_device_id_register(self):
-        self.fake.register_values[TMP117.REG_DEVICE_ID] = bytes([0x01, 0x17])
-        TMP117(self.fake)
+        self.device.register_values[TMP117.REG_DEVICE_ID] = bytes([0x01, 0x17])
+        TMP117(self.i2c)
 
     def test_datasheet_examples(self):
-        self.fake.register_values[TMP117.REG_DEVICE_ID] = bytes([0x01, 0x17])
-        tmp117 = TMP117(self.fake)
+        self.device.register_values[TMP117.REG_DEVICE_ID] = bytes([0x01, 0x17])
+        tmp117 = TMP117(self.i2c)
 
         for test_case in TEST_CASES:
-            self.fake.register_values[TMP117.REG_TEMP_RESULT] = test_case.bytes
-            self.assertAlmostEqual(
-                tmp117.get_temperature(), test_case.temperature, places=2
-            )
+            with self.subTest(test_case=test_case):
+                self.device.register_values[TMP117.REG_TEMP_RESULT] = test_case.bytes
+                self.assertAlmostEqual(tmp117.get_temperature(), test_case.temperature, places=2)
 
 
 def run():

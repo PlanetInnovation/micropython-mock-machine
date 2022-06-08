@@ -1,8 +1,8 @@
 # Changes here will be overwritten by Copier
-_commit: a4e61b9
-_src_path: https://gitlab.pi.planetinnovation.com.au/degraves/micropython_library_template.git
+_commit: a810e24
+_src_path: git@gitlab.pi.planetinnovation.com.au:degraves/template/micropython_library_template.git
 gitlab_tag: aws-525-degraves
-library_description: A MicroPython library designed to mock machine classes for use
+library_description: A MicroPython library designed to mock machine module for use
     in unit tests
-library_name: mock_classes
+library_name: mock_machine
 single_file_module: true

@@ -1,18 +1,16 @@
 import unittest
 
-from hardware_revision import HardwareRevision
-from mock_machine import MockPin, MockSPI
+from examples.hardware_revision import HardwareRevision
+from mock_machine import SPI, Pin
 
 
 class TestHardwareRevision(unittest.TestCase):
     def setUp(self):
-        self.pin_0 = MockPin("D0", MockPin.IN)
-        self.pin_1 = MockPin("D1", MockPin.IN)
-        self.spi = MockSPI()
-        self.cs = MockPin("SPI1_CS1")
-        self.hardware_revision = HardwareRevision(
-            self.pin_0, self.pin_1, self.spi, self.cs
-        )
+        self.pin_0 = Pin("D0", Pin.IN)
+        self.pin_1 = Pin("D1", Pin.IN)
+        self.spi = SPI()
+        self.cs = Pin("SPI1_CS1")
+        self.hardware_revision = HardwareRevision(self.pin_0, self.pin_1, self.spi, self.cs)
 
     def test_hardware_revision_returns_0(self):
         self.pin_0.value(0)
