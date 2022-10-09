@@ -20,7 +20,7 @@ stages:
 image: $CI_REGISTRY/degraves/micropython_build_env_docker
 
 checks:
-  image: $CI_REGISTRY/degraves/ci/pre-commit-base:v0.0.1
+  image: $CI_REGISTRY/degraves/ci/pre-commit-base:v0.0.2
   stage: quality
   tags: ["aws-525-degraves"]
   script:

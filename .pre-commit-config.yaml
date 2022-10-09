@@ -45,6 +45,6 @@ repos:
       [
         "--check",
         "--diff",
-        "--profile black", # Compatibility with black
+        "--profile=black", # Compatibility with black
         "--thirdparty upible uasyncio gc microdot_asyncio",
       ]
