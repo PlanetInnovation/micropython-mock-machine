@@ -14,16 +14,29 @@
 
 """
 Mock machine module that can be used in unit tests to test drivers.
-
-Currently implements: ADC, I2C, Pin, SPI
 """
 
 import errno
 
 import micropython
+import uasyncio as asyncio
 
 # Not concerned about unused arguments in mocks
 # pylint: disable=unused-argument
+
+
+# machine module interfaces
+
+SOFT_RESET = 0
+PWRON_RESET = 1
+HARD_RESET = 2
+WDT_RESET = 3
+DEEPSLEEP_RESET = 4
+__reset_cause__ = PWRON_RESET
+
+
+def reset_cause():
+    return __reset_cause__
 
 
 class ADC:
@@ -301,18 +314,34 @@ class I2CDevice:
         self.register_values[memaddr] = buf
 
 
+class Memory:
+    def __getitem__(self, idx):
+        return 0xFF
+
+
+mem8 = Memory()
+mem32 = Memory()
+
+
 class Pin:
     """
     Unittest support class for machine.Pin
 
     Allows manual setting of input or output pin's value.
 
-    Taken from radiata/src/firmware/test/mocks.py
     """
 
+    # mode
     IN = 0
     OUT = 1
-    ALT = 2
+    OPEN_DRAIN = 2
+    ALT = 3
+    ALT_OPEN_DRAIN = 4
+    ANALOG = 5
+
+    # pull
+    PULL_UP = 0
+    PULL_DOWN = 1
 
     IRQ_RISING = 269549568
     IRQ_FALLING = 270598144
@@ -432,3 +461,41 @@ class SPI:
 
         Returns None.
         """
+
+
+class Timer:
+    ONE_SHOT = 0
+    PERIODIC = 1
+
+    def __init__(self):
+        self._start = None
+        self._period = None
+        self._mode = None
+        self._callback = None
+        self._task = None
+
+    def init(self, mode, period, callback):
+        if self._task:
+            self._task.cancel()
+        self._mode = mode
+        self._period = period
+        self._callback = callback
+        self._task = asyncio.create_task(self._timer())
+
+    async def _timer(self):
+        while True:
+            await asyncio.sleep_ms(self._period)
+            self._callback(time.time())
+            if self._mode == self.PERIODIC:
+                continue
+            return
+
+    def deinit(self):
+        if self._task:
+            self._task.cancel()
+            self._task = None
+
+
+class UART:
+    def write(self, buf):
+        pass
