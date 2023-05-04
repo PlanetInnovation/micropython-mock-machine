@@ -25,10 +25,11 @@ tests: submodules
 	@echo "-----------------------------------"
 	@echo "Execute unit tests..."
 	@CMD="micropython -m unittest_junit discover -s test"; \
+	export MICROPYPATH=lib/micropython-lib/python-stdlib/logging:.frozen; \
 	if [ -n "$${MICROPYTHON_UNIX_UNITTEST}" ]; then \
 	  $${CMD}; \
 	else \
-	  docker run -t --rm -v $$(pwd):/code -w /code \
+	  docker run -eMICROPYPATH="$${MICROPYPATH}" -t --rm -v $$(pwd):/code -w /code \
 	  gitlab.pi.planetinnovation.com.au:5004/degraves/ci/micropython-unix-unittest:latest \
 	  $${CMD}; \
 	fi

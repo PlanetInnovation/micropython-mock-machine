@@ -17,6 +17,8 @@ Mock machine module that can be used in unit tests to test drivers.
 """
 
 import errno
+import logging
+import time
 
 try:
     from typing import Dict
@@ -26,8 +28,11 @@ except ImportError:
 import micropython
 import uasyncio as asyncio
 
+log = logging.getLogger("mock_machine")
+
 # Not concerned about unused arguments in mocks
 # pylint: disable=unused-argument
+# pylint: disable=no-member
 
 
 # machine module interfaces
@@ -412,6 +417,77 @@ class Pin:
         return self.value(x)
 
 
+class RTC:
+    def __init__(self):
+        self._callback = None
+        self._timeout = None
+        self._stop = False
+        self._running = False
+        self._task = asyncio.create_task(self._wakeup())
+
+    def wakeup(self, timeout=None, callback=None):
+        """
+
+        :param timeout:
+        :param callback:
+        :return:
+        """
+        log.info("RTC: Registering a wakeup in: %s, callback is: %s", timeout, callback)
+
+        self._timeout = timeout
+        self._callback = callback
+        if callback:
+            assert callable(self._callback)
+
+    async def _wakeup(self):
+        log.info("RTC: Starting RTC task")
+        self._running = True
+        timeout = self._timeout if self._timeout else 10
+        while not self._stop:
+            await asyncio.sleep_ms(timeout)
+
+            if self._callback:
+                self._callback()
+        self._running = False
+        log.info("RTC: stopped wakeup task")
+
+    def stop(self):
+        log.info("RTC: Calling Stop")
+        self._stop = True
+        while self._running:
+            pass
+
+    @staticmethod
+    def info():
+        return 1 << 28  # Default "RTC is good" value
+
+    @staticmethod
+    def init():
+        pass
+
+    @staticmethod
+    def datetime(datetime=None):
+        now = time.time()
+        t = tuple(time.localtime(now))
+        return t[:3] + (t[6],) + t[3:6] + (round(now * 1000000) % 1000000,)
+
+
+class Signal:
+    def __init__(self, pin, invert):
+        self.pin = pin
+        self.invert = invert
+
+    def on(self):
+        self.pin.value(0 if self.invert else 1)
+
+    def off(self):
+        self.pin.value(1 if self.invert else 0)
+
+    def value(self, val):
+        self.pin.value(val)
+        return self.pin.value()
+
+
 class SPI:
     """
     Unittest support class for machine.SPI
@@ -519,3 +595,32 @@ class Timer:
 class UART:
     def write(self, buf):
         pass
+
+
+class WDT:
+    def __init__(self, timeout):
+        self._timeout = timeout
+        self._last_pat = time.ticks_ms()
+        self._disabled = False
+        self.running = True
+        self._task = asyncio.create_task(self._tick())
+
+    def disable(self):
+        self._disabled = True
+        self.running = False
+
+    def feed(self):
+        assert self._disabled or self.running, "you are late, WDT already stopped"
+        self._last_pat = time.ticks_ms()
+
+    async def _tick(self):
+        log.info("Starting WDT loop, timeout is: %s", self._timeout)
+
+        while self.running:
+            await asyncio.sleep_ms(10)
+            diff = time.ticks_ms() - self._last_pat
+
+            if diff >= self._timeout:
+                log.error("\nWDT timeout:%s > %s\n", diff, self._timeout)
+                self.running = False
+                raise RuntimeError()
