@@ -35,6 +35,17 @@ log = logging.getLogger("mock_machine")
 # pylint: disable=no-member
 
 
+def register_as_machine():
+    """
+    This will register mock_machine as machine so it can be imported by other
+    modules expecting `import machine` to work.
+    """
+    import sys
+
+    log.warning("All imports of machine are mocked from here on")
+    sys.modules["machine"] = sys.modules["mock_machine"]
+
+
 # machine module interfaces
 
 SOFT_RESET = 0
