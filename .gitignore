@@ -4,6 +4,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.mpy
+/results
 
 # Sphinx documentation
 docs/_build/

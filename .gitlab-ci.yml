@@ -17,31 +17,25 @@ stages:
   - quality
   - test
 
-image: $CI_REGISTRY/degraves/micropython_build_env_docker
+image: ${CI_REGISTRY}/degraves/micropython_build_env_docker
 
 checks:
-  image: $CI_REGISTRY/degraves/ci/pre-commit-base:v0.0.2
+  image: ${CI_REGISTRY}/degraves/ci/pre-commit-base:v0.0.2
   stage: quality
   tags: ["aws-525-degraves"]
   script:
     - pre-commit run --all-files --show-diff-on-failure
 
 unit_test:
-  image: docker:git
+  image: ${CI_REGISTRY}/degraves/ci/micropython-unix-unittest:latest
   stage: test
   tags: ["aws-525-degraves"]
+  needs: []
   script:
-    # Duplicating `make test` in CI
-    - MICROPYPATH=""
-    - MICROPYPATH="${MICROPYPATH}:/usr/lib/mp-lib/unittest"
-    - MICROPYPATH="${MICROPYPATH}:/usr/lib/mp-lib/argparse"
-    - MICROPYPATH="${MICROPYPATH}:/usr/lib/mp-lib/fnmatch"
-    - MICROPYPATH="${MICROPYPATH}:/usr/lib/mp-lib/os.path"
-    - MICROPYCMD="MICROPYPATH=${MICROPYPATH} micropython-dev -m unittest discover -s test"
-    - >
-      docker run --rm -v $(pwd):/code -w /code
-      -v $(pwd)/lib/micropython-lib/python-stdlib:/usr/lib/mp-lib
-      micropython/unix bash -c "${MICROPYCMD}"
+    - make tests
   artifacts:
-    expire_in: 1 week
     when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - results/*.xml

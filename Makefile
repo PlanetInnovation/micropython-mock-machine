@@ -24,11 +24,14 @@ tests:  ## Execute unit tests (inside the unix port).
 tests: submodules
 	@echo "-----------------------------------"
 	@echo "Execute unit tests..."
-	docker run -ti --rm -v $$(pwd):/code -w /code \
-		-v $$(pwd)/lib/micropython-lib/python-stdlib:/usr/lib/mp-lib \
-		micropython/unix bash -c \
-		"MICROPYPATH=/usr/lib/mp-lib/unittest:/usr/lib/mp-lib/argparse:/usr/lib/mp-lib/fnmatch:/usr/lib/mp-lib/os.path \
-		micropython-dev -m unittest discover -s test"
+	@CMD="micropython -m unittest_junit discover -s test"; \
+	if [ -n "$${MICROPYTHON_UNIX_UNITTEST}" ]; then \
+	  $${CMD}; \
+	else \
+	  docker run -t --rm -v $$(pwd):/code -w /code \
+	  gitlab.pi.planetinnovation.com.au:5004/degraves/ci/micropython-unix-unittest:latest \
+	  $${CMD}; \
+	fi
 
 .PHONY: checks
 checks:  ## Run static analysis
