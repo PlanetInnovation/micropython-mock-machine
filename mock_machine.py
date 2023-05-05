@@ -20,6 +20,8 @@ Currently implements: ADC, I2C, Pin, SPI
 
 import errno
 
+import micropython
+
 # Not concerned about unused arguments in mocks
 # pylint: disable=unused-argument
 
@@ -350,6 +352,8 @@ class Pin:
         self._mode = mode
         self._pull = pull
         self._alt = None
+        self._irq_handler = None
+        self._irq_trigger = None
 
     def init(self, mode=0, pull=0, alt=0):
         self._mode = mode
@@ -358,18 +362,29 @@ class Pin:
 
     def value(self, new_value=None):
         if new_value is not None:
-            self._value = new_value
+            old_value = self._value
+            self._value = int(new_value)
+
+            if self._irq_trigger and self._irq_handler:
+                if self._irq_trigger & self.IRQ_RISING and self._value > old_value:
+                    micropython.schedule(self._irq_handler, self)
+                if self._irq_trigger & self.IRQ_FALLING and self._value < old_value:
+                    micropython.schedule(self._irq_handler, self)
             return None
         return self._value
 
     def on(self):
-        self._value = 1
+        self.value(1)
 
     def off(self):
-        self._value = 0
+        self.value(0)
 
-    def irq(self, *args, **kwargs):
-        pass
+    def irq(
+        self, handler=None, trigger=IRQ_FALLING | IRQ_RISING, priority=1, wake=None, hard=False
+    ):
+        self._irq_handler = handler
+        self._irq_trigger = trigger
+        return self  # non-standard return value
 
     def mode(self):
         return self._mode

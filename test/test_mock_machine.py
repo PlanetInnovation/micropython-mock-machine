@@ -12,9 +12,10 @@
 # stipulated in the agreement/contract under which the program(s) have been
 # supplied.
 
+import time
 import unittest
 
-from mock_machine import I2C, I2CDevice
+from mock_machine import I2C, I2CDevice, Pin
 
 
 class TestI2C(unittest.TestCase):
@@ -189,6 +190,28 @@ class TestI2C(unittest.TestCase):
                     self.i2c.writeto_mem(addr, memaddr, buf)
                     # Directly check internal memaddr value
                     self.assertEqual(self.devices[addr].register_values[memaddr], buf)
+
+
+class TestPin(unittest.TestCase):
+    @staticmethod
+    def test_pin_irq():
+        fired = False
+
+        def cb(_):
+            nonlocal fired
+            fired = True
+
+        pin = Pin("one")
+        pin.value(0)
+        pin.irq(cb, trigger=Pin.IRQ_RISING)
+
+        assert not fired
+
+        pin.value(1)
+
+        time.sleep_ms(1)  # pylint: disable=no-member
+
+        assert fired
 
 
 if __name__ == "__main__":
