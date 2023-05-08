@@ -18,6 +18,11 @@ Mock machine module that can be used in unit tests to test drivers.
 
 import errno
 
+try:
+    from typing import Dict
+except ImportError:
+    pass
+
 import micropython
 import uasyncio as asyncio
 
@@ -346,7 +351,22 @@ class Pin:
     IRQ_RISING = 269549568
     IRQ_FALLING = 270598144
 
-    def __init__(self, _, mode=0, pull=0):
+    pins: Dict[str, "Pin"] = {}
+
+    # pylint: disable=redefined-builtin
+    def __new__(cls, id, mode=0, pull=0, value=None, drive=0, alt=-1):
+        """
+        If the matching pin is already created, keep that. It's config
+        will be updated in __init__() below
+        """
+        if id in Pin.pins:
+            return Pin.pins[id]
+        self = super().__new__(cls)
+        Pin.pins[id] = self
+        return self
+
+    # pylint: disable=redefined-builtin
+    def __init__(self, id, mode=0, pull=0, value=None, drive=0, alt=-1):
         self._value = 0
         self._mode = mode
         self._pull = pull

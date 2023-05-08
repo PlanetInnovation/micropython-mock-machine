@@ -213,6 +213,26 @@ class TestPin(unittest.TestCase):
 
         assert fired
 
+    @staticmethod
+    def test_pin_reused():
+
+        pin_first_user = Pin("one")
+        pin_different = Pin("two")
+        pin_second_user = Pin("one")
+
+        pin_first_user.value(1)
+        pin_different.value(0)
+
+        assert pin_first_user.value() == 1
+        assert pin_different.value() == 0, "Should not have changed"
+        assert pin_second_user.value() == 1
+
+        pin_second_user.value(0)
+
+        assert pin_first_user.value() == 0
+        assert pin_different.value() == 0, "Should not have changed"
+        assert pin_second_user.value() == 0
+
 
 if __name__ == "__main__":
     unittest.main()
