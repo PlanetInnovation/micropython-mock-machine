@@ -21,7 +21,7 @@ import logging
 import time
 
 try:
-    from typing import Dict
+    from typing import Dict, Optional
 except ImportError:
     pass
 
@@ -426,6 +426,50 @@ class Pin:
 
     def __call__(self, x=None):
         return self.value(x)
+
+
+class PWM:
+    def __init__(
+        self,
+        dest: Pin,
+        *,
+        freq: int,
+        duty_u16: Optional[int] = None,
+        duty_ns: Optional[int] = None,
+        invert: bool = False,
+    ):
+        self._pin = dest
+        self._freq = freq
+        self._duty_u16 = duty_u16
+        self._duty_ns = duty_ns
+        if duty_ns is None and duty_u16 is None:
+            raise ValueError("Needs duty_ns or duty_u16 provided")
+        self.invert = invert
+
+    def init(self, freq, duty_u16, duty_ns):
+        self._freq = freq
+        self._duty_u16 = duty_u16
+        self._duty_ns = duty_ns
+
+    def deinit(self):
+        self._freq = None
+        self._duty_u16 = None
+        self._duty_ns = None
+
+    def freq(self, value=None):
+        if value is None:
+            return self._freq
+        self._freq = value
+
+    def duty_u16(self, value=None):
+        if value is None:
+            return self._duty_u16
+        self._duty_u16 = value
+
+    def duty_ns(self, value=None):
+        if value is None:
+            return self._duty_ns
+        self._duty_ns = value
 
 
 class RTC:
