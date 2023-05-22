@@ -57,6 +57,9 @@ __reset_cause__ = PWRON_RESET
 
 
 def reset_cause():
+    """
+    https://docs.micropython.org/en/latest/library/machine.html#machine.reset_cause
+    """
     return __reset_cause__
 
 
@@ -64,7 +67,7 @@ class ADC:
     """
     Unittest support class for machine.ADC.
 
-    Modified from radiata/src/firmware/test/mocks.py
+    https://docs.micropython.org/en/latest/library/machine.ADC.html
     """
 
     def __init__(self, pin):
@@ -104,6 +107,8 @@ class ADC:
 class I2C:
     """
     Unittest support class for machine.I2C.
+
+    https://docs.micropython.org/en/latest/library/machine.I2C.html
     """
 
     def __init__(
@@ -237,6 +242,9 @@ class I2C:
 class I2CDevice:
     """
     A single I2C device added to a mock_machine.I2C bus.
+
+    This is a utility class for simulating a real device, not
+    representative of a "real" micropython machine class.
     """
 
     def __init__(self, addr, i2c):
@@ -339,6 +347,7 @@ class Memory:
     """
     https://docs.micropython.org/en/latest/library/machine.html#memory-access
     """
+
     def __init__(self, data):
         self.data = data
 
@@ -356,6 +365,8 @@ class Pin:
     Unittest support class for machine.Pin
 
     Allows manual setting of input or output pin's value.
+
+    https://docs.micropython.org/en/latest/library/machine.Pin.html
 
     """
 
@@ -436,6 +447,10 @@ class Pin:
 
 
 class PWM:
+    """
+    https://docs.micropython.org/en/latest/library/machine.PWM.html
+    """
+
     def __init__(
         self,
         dest: Pin,
@@ -480,6 +495,10 @@ class PWM:
 
 
 class RTC:
+    """
+    https://docs.micropython.org/en/latest/library/machine.RTC.html
+    """
+
     def __init__(self):
         self._callback = None
         self._timeout = None
@@ -535,6 +554,10 @@ class RTC:
 
 
 class Signal:
+    """
+    https://docs.micropython.org/en/latest/library/machine.Signal.html
+    """
+
     def __init__(self, pin, invert):
         self.pin = pin
         self.invert = invert
@@ -553,6 +576,8 @@ class Signal:
 class SPI:
     """
     Unittest support class for machine.SPI
+
+    https://docs.micropython.org/en/latest/library/machine.SPI.html
     """
 
     def __init__(self, id=None):  # pylint: disable=unused-argument,redefined-builtin
@@ -622,6 +647,10 @@ class SPI:
 
 
 class Timer:
+    """
+    https://docs.micropython.org/en/latest/library/machine.Timer.html
+    """
+
     ONE_SHOT = 0
     PERIODIC = 1
 
@@ -655,11 +684,19 @@ class Timer:
 
 
 class UART:
+    """
+    https://docs.micropython.org/en/latest/library/machine.UART.html
+    """
+
     def write(self, buf):
         pass
 
 
 class WDT:
+    """
+    https://docs.micropython.org/en/latest/library/machine.WDT.html
+    """
+
     def __init__(self, timeout):
         self._timeout = timeout
         self._last_pat = time.ticks_ms()
