@@ -336,12 +336,19 @@ class I2CDevice:
 
 
 class Memory:
+    """
+    https://docs.micropython.org/en/latest/library/machine.html#memory-access
+    """
+    def __init__(self, data):
+        self.data = data
+
     def __getitem__(self, idx):
-        return 0xFF
+        return self.data
 
 
-mem8 = Memory()
-mem32 = Memory()
+mem8 = Memory(0xFF)
+mem16 = Memory(0xFFFF)
+mem32 = Memory(0xFFFFFFFF)
 
 
 class Pin:
