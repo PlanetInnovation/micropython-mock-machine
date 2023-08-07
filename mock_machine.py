@@ -73,6 +73,7 @@ class ADC:
     def __init__(self, pin):
         self.pin = pin
         self.value_u16 = 0
+        self.value_uv = 0
 
     # Methods
     def init(self, *, sample_ns, atten):
@@ -101,7 +102,9 @@ class ADC:
 
         It is up to the particular port whether or not this value is calibrated, and how
         calibration is done.
+        Note: stm32 port does not include this functionality as of August 2023.
         """
+        return self.value_uv
 
 
 class I2C:
