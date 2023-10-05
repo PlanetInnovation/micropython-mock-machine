@@ -657,12 +657,15 @@ class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
 
-    def __init__(self):
+    def __init__(self, channel, mode=None, period=None, callback=None):
         self._start = None
-        self._period = None
-        self._mode = None
-        self._callback = None
+        self._period = period
+        self._mode = mode
+        self._callback = callback
         self._task = None
+        self._channel = channel
+        if mode or period or callback:
+            self.init(mode, period, callback)
 
     def init(self, mode, period, callback):
         if self._task:
