@@ -64,6 +64,7 @@ def reset_cause():
 
 
 class ADC:
+    pin_adc_map: Dict[Pin, int] = {}  # noqa: F821
     """
     Unittest support class for machine.ADC.
 
@@ -72,8 +73,6 @@ class ADC:
 
     def __init__(self, pin):
         self.pin = pin
-        self.value_u16 = 0
-        self.value_uv = 0
 
     # Methods
     def init(self, *, sample_ns, atten):
@@ -94,7 +93,10 @@ class ADC:
 
         The return value represents the raw reading taken by the ADC.
         """
-        return self.value_u16
+        if self.pin in ADC.pin_adc_map:
+            return ADC.pin_adc_map[self.pin]
+
+        return 0
 
     def read_uv(self):
         """
