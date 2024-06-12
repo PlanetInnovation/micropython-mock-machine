@@ -659,7 +659,8 @@ class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
 
-    def __init__(self, channel, mode=None, period=None, callback=None):
+    def __init__(self, id, channel=None, mode=None, period=None, callback=None):
+        self._id = id  # Micropython timer first positional param is id.
         self._start = None
         self._period = period
         self._mode = mode
@@ -669,7 +670,7 @@ class Timer:
         if mode or period or callback:
             self.init(mode, period, callback)
 
-    def init(self, mode, period, callback):
+    def init(self, freq, mode=PERIODIC, period=-1, callback=None):
         if self._task:
             self._task.cancel()
         self._mode = mode
