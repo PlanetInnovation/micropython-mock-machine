@@ -406,17 +406,18 @@ class Pin:
 
     # pylint: disable=redefined-builtin
     def __init__(self, id, mode=0, pull=0, value=None, drive=0, alt=-1):
-        self._value = 0
+        self._value = value
         self._mode = mode
         self._pull = pull
         self._alt = None
         self._irq_handler = None
         self._irq_trigger = None
 
-    def init(self, mode=0, pull=0, alt=0):
+    def init(self, mode=0, pull=0, alt=0, value=None):
         self._mode = mode
         self._pull = pull
         self._alt = alt
+        self._value = value
 
     def value(self, new_value=None):
         if new_value is not None:
@@ -435,6 +436,12 @@ class Pin:
         self.value(1)
 
     def off(self):
+        self.value(0)
+
+    def high(self):
+        self.value(1)
+
+    def low(self):
         self.value(0)
 
     def irq(
@@ -589,7 +596,8 @@ class SPI:
         """
         Construct an SPI object on the given bus, id.
         """
-        self.readbuf = b""
+        self.write_buf = bytearray()  # what has been written in order of calls
+        self.read_buf = bytearray()  # what to read in order of calls
 
     # SPI Methods
     def init(
@@ -622,7 +630,7 @@ class SPI:
 
         Returns a bytes object with the data that was read.
         """
-        return self.readbuf[:nbytes]
+        return self.read_buf[:nbytes]
 
     def readinto(self, buf, write=0x00):
         """
@@ -633,6 +641,7 @@ class SPI:
 
         Returns None.
         """
+        buf[:] = self.read(len(buf))
 
     def write(self, buf):
         """
@@ -640,6 +649,7 @@ class SPI:
 
         Returns None.
         """
+        self.write_buf = buf
 
     def write_readinto(self, write_buf, read_buf):
         """
@@ -649,6 +659,8 @@ class SPI:
 
         Returns None.
         """
+        self.readinto(read_buf)
+        self.write_buf = write_buf
 
 
 class Timer:

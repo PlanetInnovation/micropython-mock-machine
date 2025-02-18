@@ -47,9 +47,9 @@ class TestHardwareRevision(unittest.TestCase):
         self.assertEqual(self.hardware_revision.read(), 3)
 
     def test_hardware_revision_reads_spi_size(self):
-        self.spi.readbuf = b"\x9F\xC2\x23\x15"  # RDID for MX25V1635F
+        self.spi.read_buf = b"\x9F\xC2\x23\x15"  # RDID for MX25V1635F
         self.assertEqual(self.hardware_revision.read_spi_flash_size(), 2 * 1024 * 1024)
-        self.spi.readbuf = b"\x9F\xC2\x20\x19"  # RDID for MX25L25673G
+        self.spi.read_buf = b"\x9F\xC2\x20\x19"  # RDID for MX25L25673G
         self.assertEqual(self.hardware_revision.read_spi_flash_size(), 32 * 1024 * 1024)
 
 
