@@ -596,8 +596,15 @@ class SPI:
         """
         Construct an SPI object on the given bus, id.
         """
-        self.write_buf = bytearray()  # what has been written in order of calls
-        self.read_buf = bytearray()  # what to read in order of calls
+        # Use write_buf/read_buf if dealing with the same data regardless of the
+        # number of calls.
+        self.write_buf = bytearray()  # what has been written last
+        self.read_buf = bytearray()  # what to return from read
+
+        # Use writes/reads if dealing with different data in different calls.
+        self.writes = []  # what has been written in order of calls
+        self.reads = []  # what to return from read in order of calls
+        self.num_reads = 0  # the number of reads so far
 
     # SPI Methods
     def init(
@@ -630,7 +637,17 @@ class SPI:
 
         Returns a bytes object with the data that was read.
         """
-        return self.read_buf[:nbytes]
+        # Return the data from read_buf again and again, if specified.
+        if self.read_buf:
+            return self.read_buf[:nbytes]
+
+        # Otherwise, return the data from reads in order of calls, if specified.
+        if self.reads:
+            index = self.num_reads
+            self.num_reads += 1
+            return self.reads[index]
+
+        raise NotImplementedError
 
     def readinto(self, buf, write=0x00):
         """
@@ -649,7 +666,11 @@ class SPI:
 
         Returns None.
         """
-        self.write_buf = buf
+        # Always record copy of the last written data to write_buf.
+        self.write_buf = bytes(buf)
+
+        # Always append copy of the written data to writes in order of calls.
+        self.writes.append(bytes(buf))
 
     def write_readinto(self, write_buf, read_buf):
         """
@@ -661,6 +682,14 @@ class SPI:
         """
         self.readinto(read_buf)
         self.write_buf = write_buf
+
+    def reset(self):
+        """
+        Reset to the initial state of the mock.
+        """
+        self.writes = []
+        self.reads = []
+        self.num_reads = 0
 
 
 class Timer:
