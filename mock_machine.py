@@ -17,6 +17,7 @@ Mock machine module that can be used in unit tests to test drivers.
 """
 
 import errno
+import io
 import logging
 import time
 
@@ -25,8 +26,9 @@ try:
 except ImportError:
     pass
 
+import asyncio
 import micropython
-import uasyncio as asyncio
+from micropython import const
 
 log = logging.getLogger("mock_machine")
 
@@ -733,15 +735,6 @@ class Timer:
             self._task = None
 
 
-class UART:
-    """
-    https://docs.micropython.org/en/latest/library/machine.UART.html
-    """
-
-    def write(self, buf):
-        pass
-
-
 class WDT:
     """
     https://docs.micropython.org/en/latest/library/machine.WDT.html
@@ -773,3 +766,52 @@ class WDT:
                 log.error("\nWDT timeout:%s > %s\n", diff, self._timeout)
                 self.running = False
                 raise RuntimeError()
+
+
+class UART(io.IOBase):
+    """
+    Mock UART
+    https://docs.micropython.org/en/latest/library/machine.UART.html
+    """
+
+    def __init__(self, data_for_read=b""):
+        self.read_buf = io.BytesIO(data_for_read)
+        self.read_buf.seek(0)
+        self.write_buf = io.BytesIO()
+        super().__init__()
+
+    def write(self, data):
+        return self.write_buf.write(data)
+
+    def read(self, nbytes=-1):
+        return self.read_buf.read(nbytes)
+
+    def readinto(self, buf):
+        return self.read_buf.readinto(buf)
+
+    def readline(self):
+        return self.read_buf.readline()
+
+    def seek(self, offset, whence):
+        self.read_buf.seek(offset, whence)
+
+    def flush(self):
+        pass
+
+    def close(self):
+        pass
+
+    def any(self):
+        pos = self.read_buf.tell()
+        end = self.read_buf.seek(0, 3)
+        self.read_buf.seek(pos, 0)
+        return end - pos
+
+    def ioctl(self, op, arg):
+        # From micropython/py/stream.h
+        _MP_STREAM_POLL = const(3)
+        _MP_STREAM_POLL_RD = const(0x0001)
+        if op == _MP_STREAM_POLL:
+            if self.any():
+                return _MP_STREAM_POLL_RD
+        return 0
