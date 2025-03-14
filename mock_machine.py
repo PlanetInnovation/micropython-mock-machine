@@ -803,7 +803,7 @@ class UART(io.IOBase):
 
     def any(self):
         pos = self.read_buf.tell()
-        end = self.read_buf.seek(0, 3)
+        end = self.read_buf.seek(-1, 2)
         self.read_buf.seek(pos, 0)
         return end - pos
 
