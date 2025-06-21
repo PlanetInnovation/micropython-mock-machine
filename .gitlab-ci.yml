@@ -1,14 +1,5 @@
-#   PI Background IP
-#   Copyright (c) 2022, Planet Innovation
-#   436 Elgar Road, Box Hill VIC 3128 Australia
-#   Phone: +61 3 9945 7510
-#
-#   The copyright to the computer program(s) herein is the property of
-#   Planet Innovation, Australia.
-#   The program(s) may be used and/or copied only with the written permission
-#   of Planet Innovation or in accordance with the terms and conditions
-#   stipulated in the agreement/contract under which the program(s) have been
-#   supplied.
+# Copyright (c) 2025 Planet Innovation Pty Ltd
+# SPDX-License-Identifier: MIT
 
 variables:
   GIT_SUBMODULE_STRATEGY: normal
@@ -16,6 +7,7 @@ variables:
 stages:
   - quality
   - test
+  - docs
 
 image: ${CI_REGISTRY}/degraves/micropython_build_env_docker
 
@@ -39,3 +31,34 @@ unit_test:
     reports:
       junit:
         - results/*.xml
+
+.docs:
+  image: python:3.11-slim
+  stage: docs
+  tags: ["aws-525-degraves"]
+  before_script:
+    - pip install -r requirements-docs.txt
+  script:
+    - mkdocs build --site-dir ./public
+
+pages:
+  extends: .docs
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+
+pages-mr:
+  extends: .docs
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 week
+  variables:
+      PUBLIC_URL: "$CI_PAGES_URL/../../-/library/micropython-mock-machine/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+  environment:
+      name: review/$CI_COMMIT_REF_NAME
+      url: "$CI_PAGES_URL/../../-/library/micropython-mock-machine/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+  only:
+    - merge_requests

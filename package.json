@@ -1,0 +1,8 @@
+{
+  "urls": [
+    ["mock_machine.py", "github:planetinnovation/micropython-mock-machine/mock_machine.py"]
+  ],
+  "deps": [],
+  "version": "1.0.0",
+  "description": "Mock machine module for MicroPython unit testing"
+}
