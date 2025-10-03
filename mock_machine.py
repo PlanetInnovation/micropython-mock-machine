@@ -580,14 +580,14 @@ class RTC:
         self._timeout = None
         self._stop = False
         self._running = False
-        self._task = asyncio.create_task(self._wakeup())
+        self._task = None  # don't start task yet
 
     def wakeup(self, timeout=None, callback=None):
         """
+        Register a wakeup timer.
 
-        :param timeout:
-        :param callback:
-        :return:
+        :param timeout: Wakeup interval in ms
+        :param callback: Function to call on wakeup
         """
         log.info("RTC: Registering a wakeup in: %s, callback is: %s", timeout, callback)
 
@@ -596,23 +596,34 @@ class RTC:
         if callback:
             assert callable(self._callback)
 
+        # Start the async loop only when first used
+        if not self._task:
+            self._task = asyncio.create_task(self._wakeup())
+
     async def _wakeup(self):
         log.info("RTC: Starting RTC task")
         self._running = True
-        timeout = self._timeout if self._timeout else 10
+
         while not self._stop:
+            timeout = self._timeout if self._timeout else 1000  # default 1s
             await asyncio.sleep_ms(timeout)
 
             if self._callback:
-                self._callback()
+                try:
+                    self._callback()
+                except Exception as e:
+                    log.error("RTC callback raised: %s", e)
+
         self._running = False
         log.info("RTC: stopped wakeup task")
 
     def stop(self):
         log.info("RTC: Calling Stop")
         self._stop = True
-        while self._running:
-            pass
+        if self._task:
+            while self._running:
+                pass
+            self._task = None
 
     @staticmethod
     def info():
@@ -764,7 +775,7 @@ class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
 
-    def __init__(self, id, channel=None, mode=None, period=None, callback=None):
+    def __init__(self, id=0, channel=None, mode=None, period=None, callback=None):
         self._id = id  # Micropython timer first positional param is id.
         self._start = None
         self._period = period
@@ -772,21 +783,25 @@ class Timer:
         self._callback = callback
         self._task = None
         self._channel = channel
-        if mode or period or callback:
-            self.init(mode, period, callback)
+        self._freq = 1000  # default frequency
 
-    def init(self, freq, mode=PERIODIC, period=-1, callback=None):
+        if mode or period or callback:
+            self.init(freq=self._freq, mode=mode, period=period, callback=callback)
+
+    def init(self, freq=1000, mode=PERIODIC, period=-1, callback=None):
         if self._task:
             self._task.cancel()
+        self._freq = freq or 1000
         self._mode = mode
-        self._period = period
+        self._period = period if period > 0 else 1000  # fallback to 1s
         self._callback = callback
         self._task = asyncio.create_task(self._timer())
 
     async def _timer(self):
         while True:
             await asyncio.sleep_ms(self._period)
-            self._callback(time.time())
+            if self._callback:
+                self._callback(time.time())
             if self._mode == self.PERIODIC:
                 continue
             return
