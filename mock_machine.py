@@ -350,6 +350,68 @@ class I2CDevice:
         self.register_values[memaddr] = buf
 
 
+class RegisterBasedI2CDevice(I2CDevice):
+    """
+    I2C device that uses register-based protocol (common for RTCs, sensors, etc.).
+
+    This device simulates the common I2C protocol where:
+    1. Master writes register address
+    2. Master reads/writes data from/to that register
+
+    This matches the protocol used by many I2C devices like the PCF85063 RTC.
+    """
+
+    def __init__(self, addr, i2c, register_count=32):
+        """
+        Initialize register-based I2C device.
+
+        Args:
+            addr: I2C address of the device
+            i2c: I2C bus to attach to
+            register_count: Number of registers (default 32)
+        """
+        super().__init__(addr, i2c)
+        self.registers = bytearray(register_count)
+        self.current_register = None
+
+    def writeto(self, buf, stop=True):
+        """
+        Write bytes to device.
+
+        First byte is register address, subsequent bytes are written to registers.
+        """
+        if len(buf) == 0:
+            return 0
+
+        # First byte is register address
+        self.current_register = buf[0]
+
+        # If more bytes, write them to registers
+        if len(buf) > 1:
+            for i, value in enumerate(buf[1:]):
+                reg_addr = self.current_register + i
+                if reg_addr < len(self.registers):
+                    self.registers[reg_addr] = value
+
+        return len(buf)
+
+    def readfrom_into(self, buf, stop=True):
+        """
+        Read bytes from device into buffer.
+
+        Reads from the current register address set by previous writeto.
+        """
+        if self.current_register is None:
+            raise ValueError("No register address set")
+
+        for i in range(len(buf)):
+            reg_addr = self.current_register + i
+            if reg_addr < len(self.registers):
+                buf[i] = self.registers[reg_addr]
+            else:
+                buf[i] = 0
+
+
 class Memory:
     """
     https://docs.micropython.org/en/latest/library/machine.html#memory-access
