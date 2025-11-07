@@ -20,7 +20,7 @@ Currently mock_machine implements:
 - `SPI`
     - `__init__`
     - `read`
-`- Pin`
+- `Pin`
     - `__init__`
     - `init`
     - `value`
@@ -32,6 +32,15 @@ Currently mock_machine implements:
 - `ADC`
     - `__init__`
     - `read_u16`
+- `UART`
+    - `__init__`
+    - `read`
+    - `readinto`
+    - `readline`
+    - `write`
+    - `any`
+    - `ioctl`
+    - `inject_data` (mock-specific for simulating received data)
 
 The following additional functionality has been implemented to allow for mocking of multiple devices
 connected to communications bus:

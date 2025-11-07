@@ -15,7 +15,7 @@
 import time
 import unittest
 
-from mock_machine import I2C, I2CDevice, Pin
+from mock_machine import I2C, I2CDevice, Pin, UART
 
 
 class TestI2C(unittest.TestCase):
@@ -232,6 +232,209 @@ class TestPin(unittest.TestCase):
         assert pin_first_user.value() == 0
         assert pin_different.value() == 0, "Should not have changed"
         assert pin_second_user.value() == 0
+
+
+class TestUART(unittest.TestCase):
+    """Test UART class with RingIO buffers."""
+
+    def test_basic_read_write(self):
+        """Test basic read and write operations."""
+        uart = UART()
+
+        # Write data
+        written = uart.write(b"Hello")
+        self.assertEqual(written, 5)
+
+        # Read back written data
+        data = uart.get_written_data()
+        self.assertEqual(data, b"Hello")
+
+    def test_initial_data(self):
+        """Test UART with initial data_for_read."""
+        uart = UART(data_for_read=b"Initial data")
+
+        # Should be able to read initial data
+        data = uart.read()
+        self.assertEqual(data, b"Initial data")
+
+    def test_inject_data(self):
+        """Test dynamic data injection."""
+        uart = UART()
+
+        # Initially no data
+        self.assertEqual(uart.any(), 0)
+
+        # Inject some data
+        injected = uart.inject_data(b"Injected")
+        self.assertEqual(injected, 8)
+        self.assertEqual(uart.any(), 8)
+
+        # Read it back
+        data = uart.read()
+        self.assertEqual(data, b"Injected")
+        self.assertEqual(uart.any(), 0)
+
+    def test_multiple_injections(self):
+        """Test multiple data injections."""
+        uart = UART()
+
+        uart.inject_data(b"First ")
+        uart.inject_data(b"Second ")
+        uart.inject_data(b"Third")
+
+        # All data should be concatenated in buffer
+        self.assertEqual(uart.any(), 18)
+        data = uart.read()
+        self.assertEqual(data, b"First Second Third")
+
+    def test_partial_read(self):
+        """Test reading partial data."""
+        uart = UART(data_for_read=b"Hello World")
+
+        # Read first 5 bytes
+        data = uart.read(5)
+        self.assertEqual(data, b"Hello")
+        self.assertEqual(uart.any(), 6)
+
+        # Read remaining
+        data = uart.read()
+        self.assertEqual(data, b" World")
+        self.assertEqual(uart.any(), 0)
+
+    def test_readinto(self):
+        """Test readinto buffer operation."""
+        uart = UART(data_for_read=b"Test data")
+
+        buf = bytearray(4)
+        n = uart.readinto(buf)
+
+        self.assertEqual(n, 4)
+        self.assertEqual(buf, b"Test")
+        self.assertEqual(uart.any(), 5)
+
+    def test_readline(self):
+        """Test readline operation."""
+        uart = UART(data_for_read=b"Line1\nLine2\nLine3")
+
+        line1 = uart.readline()
+        self.assertEqual(line1, b"Line1\n")
+
+        line2 = uart.readline()
+        self.assertEqual(line2, b"Line2\n")
+
+        line3 = uart.readline()
+        self.assertEqual(line3, b"Line3")
+
+    def test_any(self):
+        """Test any() returns correct byte count."""
+        uart = UART()
+
+        self.assertEqual(uart.any(), 0)
+
+        uart.inject_data(b"12345")
+        self.assertEqual(uart.any(), 5)
+
+        uart.read(2)
+        self.assertEqual(uart.any(), 3)
+
+        uart.read()
+        self.assertEqual(uart.any(), 0)
+
+    def test_buffer_overflow(self):
+        """Test behavior when buffer is full."""
+        # Create small buffer
+        uart = UART(rxbuf=8)
+
+        # Fill buffer (8 bytes max, RingIO reserves 1)
+        written = uart.inject_data(b"12345678")
+        self.assertTrue(written <= 8)
+
+        # Try to inject more - should write less than requested
+        overflow = uart.inject_data(b"90")
+        self.assertTrue(overflow < 2)
+
+    def test_write_buffer_capture(self):
+        """Test that written data is captured correctly."""
+        uart = UART()
+
+        uart.write(b"AT+")
+        uart.write(b"CMD")
+        uart.write(b"\r\n")
+
+        # Should capture all writes
+        written_data = uart.get_written_data()
+        self.assertEqual(written_data, b"AT+CMD\r\n")
+
+    def test_ioctl_poll(self):
+        """Test ioctl MP_STREAM_POLL operation."""
+        uart = UART()
+
+        # No data - should return 0
+        result = uart.ioctl(3, 0)  # MP_STREAM_POLL
+        self.assertEqual(result, 0)
+
+        # With data - should return MP_STREAM_POLL_RD
+        uart.inject_data(b"data")
+        result = uart.ioctl(3, 0)
+        self.assertEqual(result, 0x0001)  # MP_STREAM_POLL_RD
+
+    def test_custom_buffer_sizes(self):
+        """Test UART with custom buffer sizes."""
+        uart = UART(rxbuf=16, txbuf=32)
+
+        # Should be able to inject up to rxbuf size
+        data = b"x" * 15
+        written = uart.inject_data(data)
+        self.assertTrue(written >= 10)  # At least most of it should fit
+
+    def test_backward_compatibility(self):
+        """Test backward compatibility with read_buf_len parameter."""
+        uart = UART(read_buf_len=64, data_for_read=b"Test")
+
+        data = uart.read()
+        self.assertEqual(data, b"Test")
+
+    def test_empty_operations(self):
+        """Test operations on empty buffers."""
+        uart = UART()
+
+        # Reading from empty buffer
+        data = uart.read()
+        self.assertEqual(data, b"")
+
+        data = uart.read(10)
+        self.assertEqual(data, b"")
+
+        line = uart.readline()
+        self.assertEqual(line, b"")
+
+        buf = bytearray(4)
+        n = uart.readinto(buf)
+        self.assertEqual(n, 0)
+
+    def test_constructor_params(self):
+        """Test UART accepts standard constructor parameters."""
+        # Should accept all standard UART parameters without error
+        uart = UART(
+            id=1,
+            baudrate=115200,
+            bits=8,
+            parity=None,
+            stop=1,
+            tx="P1",
+            rx="P2",
+            txbuf=512,
+            rxbuf=512,
+            timeout=1000,
+            timeout_char=10,
+            invert=0,
+            flow=0,
+        )
+
+        # Basic functionality should still work
+        uart.inject_data(b"Test")
+        data = uart.read()
+        self.assertEqual(data, b"Test")
 
 
 if __name__ == "__main__":

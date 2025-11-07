@@ -836,26 +836,55 @@ class UART(io.IOBase):
     https://docs.micropython.org/en/latest/library/machine.UART.html
     """
 
-    def __init__(self, data_for_read=b""):
-        self.read_buf = io.BytesIO(data_for_read)
-        self.read_buf.seek(0)
-        self.write_buf = io.BytesIO()
+    def __init__(
+        self,
+        id=None,
+        baudrate=9600,
+        bits=8,
+        parity=None,
+        stop=1,
+        tx=None,
+        rx=None,
+        txbuf=256,
+        rxbuf=256,
+        timeout=0,
+        timeout_char=0,
+        invert=0,
+        flow=0,
+        read_buf_len=256,
+        data_for_read=b"",
+    ):
+        rx_size = rxbuf if rxbuf != 256 else read_buf_len
+        tx_size = txbuf
+
+        # Create RingIO buffers for RX and TX
+        self._rx_ring = micropython.RingIO(rx_size)
+        self._tx_ring = micropython.RingIO(tx_size)
+
+        if data_for_read:
+            self.inject_data(data_for_read)
+
         super().__init__()
 
+    def inject_data(self, data):
+        """Inject data into read buffer to simulate receiving data."""
+        return self._rx_ring.write(data)
+
     def write(self, data):
-        return self.write_buf.write(data)
+        return self._tx_ring.write(data)
 
     def read(self, nbytes=-1):
-        return self.read_buf.read(nbytes)
+        if nbytes == -1:
+            return self._rx_ring.read()
+        return self._rx_ring.read(nbytes)
 
-    def readinto(self, buf):
-        return self.read_buf.readinto(buf)
+    def readinto(self, buf, nbytes=None):
+        if nbytes is None:
+            nbytes = len(buf)
+        return self._rx_ring.readinto(buf, nbytes)
 
     def readline(self):
-        return self.read_buf.readline()
-
-    def seek(self, offset, whence):
-        self.read_buf.seek(offset, whence)
+        return self._rx_ring.readline()
 
     def flush(self):
         pass
@@ -864,16 +893,27 @@ class UART(io.IOBase):
         pass
 
     def any(self):
-        pos = self.read_buf.tell()
-        end = self.read_buf.seek(-1, 2)
-        self.read_buf.seek(pos, 0)
-        return end - pos
+        return self._rx_ring.any()
 
     def ioctl(self, op, arg):
         # From micropython/py/stream.h
+        # This allows the class to be used in asyncio.StreamReader etc.
         _MP_STREAM_POLL = const(3)
         _MP_STREAM_POLL_RD = const(0x0001)
+        _MP_STREAM_FLUSH = const(1)
+        _MP_STREAM_CLOSE = const(4)
+
         if op == _MP_STREAM_POLL:
-            if self.any():
-                return _MP_STREAM_POLL_RD
-        return 0
+            ret = _MP_STREAM_POLL_RD if self.any() else 0
+            return ret
+        elif op == _MP_STREAM_FLUSH:
+            return self.flush()
+        elif op == _MP_STREAM_CLOSE:
+            return self.close()
+
+        # Return -1 for unsupported ioctl operations
+        return -1
+
+    def get_written_data(self):
+        """Get all data written to UART (for test assertions)."""
+        return self._tx_ring.read()
