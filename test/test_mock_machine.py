@@ -233,6 +233,132 @@ class TestPin(unittest.TestCase):
         assert pin_different.value() == 0, "Should not have changed"
         assert pin_second_user.value() == 0
 
+    def test_pin_board_magic_mode_default(self):
+        """Test Pin.board and Pin.cpu default to magic mode without configuration"""
+        # Should return any pin name in magic mode (default)
+        assert Pin.board.LED_GREEN == "LED_GREEN"
+        assert Pin.board.ANY_PIN_NAME == "ANY_PIN_NAME"
+        assert Pin.board.SPI5_SCK == "SPI5_SCK"
+
+        # Pin.cpu should also work in magic mode
+        assert Pin.cpu.LED_GREEN == "LED_GREEN"
+        assert Pin.cpu.ANY_PIN_NAME == "ANY_PIN_NAME"
+
+    def test_pin_board_magic_mode_explicit(self):
+        """Test Pin.board with explicit None configuration stays in magic mode"""
+        Pin.board.configure(None)
+        assert Pin.board.SOME_PIN == "SOME_PIN"
+        assert Pin.board.ANOTHER_PIN == "ANOTHER_PIN"
+
+    def test_pin_board_strict_mode_with_csv(self):
+        """Test Pin.board in strict mode with a valid pins.csv file"""
+        import os
+
+        # Create a test pins.csv file
+        test_path = "test_pins_strict.csv"
+        try:
+            with open(test_path, "w") as f:
+                f.write("# Test pins file\n")
+                f.write("LED_GREEN,GPIO_01\n")
+                f.write("LED_RED,GPIO_02\n")
+                f.write("SPI5_SCK,GPIO_10\n")
+                f.write("-HIDDEN_PIN,GPIO_99\n")  # Should be skipped
+                f.write("\n")  # Empty line
+                f.write("# Another comment\n")
+
+            # Configure with the test CSV
+            Pin.board.configure(test_path)
+
+            # Pin.board: board name → CPU pin
+            assert Pin.board.LED_GREEN == "GPIO_01"
+            assert Pin.board.LED_RED == "GPIO_02"
+            assert Pin.board.SPI5_SCK == "GPIO_10"
+
+            # Pin.cpu: CPU pin → CPU pin (identity)
+            assert Pin.cpu.GPIO_01 == "GPIO_01"
+            assert Pin.cpu.GPIO_02 == "GPIO_02"
+            assert Pin.cpu.GPIO_10 == "GPIO_10"
+
+            # Hidden pin should not be accessible by board name
+            with self.assertRaises(AttributeError) as ctx:
+                _ = Pin.board.HIDDEN_PIN
+            assert "not defined in pins.csv" in str(ctx.exception)
+
+            # Hidden pin's CPU pin (GPIO_99) should not be in Pin.cpu either
+            with self.assertRaises(AttributeError) as ctx:
+                _ = Pin.cpu.GPIO_99
+            assert "not defined in pins.csv" in str(ctx.exception)
+
+            # Undefined pin should raise error in strict mode
+            with self.assertRaises(AttributeError) as ctx:
+                _ = Pin.board.UNDEFINED_PIN
+            assert "not defined in pins.csv" in str(ctx.exception)
+
+            with self.assertRaises(AttributeError) as ctx:
+                _ = Pin.cpu.UNDEFINED_PIN
+            assert "not defined in pins.csv" in str(ctx.exception)
+
+        finally:
+            # Clean up test file
+            try:
+                os.remove(test_path)
+            except OSError:
+                pass
+
+    def test_pin_board_fallback_on_missing_file(self):
+        """Test Pin.board falls back to magic mode if CSV file doesn't exist"""
+        # Configure with non-existent file
+        Pin.board.configure("/this/path/does/not/exist/pins.csv")
+
+        # Should fall back to magic mode
+        assert Pin.board.ANY_PIN == "ANY_PIN"
+        assert Pin.board.ANOTHER_PIN == "ANOTHER_PIN"
+
+    def test_pin_board_reconfigure(self):
+        """Test Pin.board can be reconfigured"""
+        import os
+
+        # Create test CSV files
+        test_path1 = "test_pins_a.csv"
+        test_path2 = "test_pins_b.csv"
+
+        try:
+            # First configuration
+            with open(test_path1, "w") as f:
+                f.write("PIN_A,GPIO_01\n")
+
+            # Second configuration
+            with open(test_path2, "w") as f:
+                f.write("PIN_B,GPIO_02\n")
+
+            # Configure with first CSV
+            Pin.board.configure(test_path1)
+            assert Pin.board.PIN_A == "GPIO_01"  # Pin.board returns CPU pin
+            with self.assertRaises(AttributeError):
+                _ = Pin.board.PIN_B
+
+            # Reconfigure with second CSV
+            Pin.board.configure(test_path2)
+            assert Pin.board.PIN_B == "GPIO_02"  # Pin.board returns CPU pin
+            with self.assertRaises(AttributeError):
+                _ = Pin.board.PIN_A
+
+            # Reconfigure back to magic mode
+            Pin.board.configure(None)
+            assert Pin.board.PIN_A == "PIN_A"  # Magic mode returns name as-is
+            assert Pin.board.PIN_B == "PIN_B"
+
+        finally:
+            # Clean up test files
+            try:
+                os.remove(test_path1)
+            except OSError:
+                pass
+            try:
+                os.remove(test_path2)
+            except OSError:
+                pass
+
 
 class TestUART(unittest.TestCase):
     """Test UART class with RingIO buffers."""

@@ -456,6 +456,126 @@ class Pin:
 
     pins: Dict[str, "Pin"] = {}
 
+    """
+    Configuring Pin.board and Pin.cpu definitions.
+    The actual pin names for your project can be configured
+    in this mock Pin class by providing your real board pins.csv file like:
+    `Pin.board.configure("../path/to/my-board/pins.csv")`
+    After this your mock Pin.board.<PIN_NAME> and Pin.cpu.<GPIO_NAME>
+    attributes will work similar to the real hardware.
+    """
+
+    class _PinNamespace:
+        """Base class for pin name namespaces (board/cpu)"""
+
+        def __init__(self, column_index: int, namespace_name: str):
+            self._pins: Dict[str, str] = {}
+            self._magic_mode: bool = True
+            self._column_index = column_index
+            self._namespace_name = namespace_name
+
+        def _load_pins(self, pins_csv_path: Optional[str] = None) -> None:
+            """Load pins from CSV file
+
+            Args:
+                pins_csv_path: Explicit path to pins.csv file
+                              - If provided and exists: STRICT mode (only defined pins allowed)
+                              - If None or file missing: MAGIC mode (any pin name works)
+
+            The pins.csv format expected is:
+                BOARD_PIN,CPU_PIN
+                # Comments start with #
+                -HIDDEN_PIN,GPIO_yyy  # Pins starting with - are skipped
+            """
+            self._pins = {}
+
+            if pins_csv_path is None:
+                # No CSV specified - use magic mode for maximum compatibility
+                self._magic_mode = True
+                return
+
+            try:
+                with open(pins_csv_path, "r") as f:
+                    for line in f:
+                        line = line.strip()
+                        # Skip comments and empty lines
+                        if not line or line.startswith("#"):
+                            continue
+
+                        # Parse CSV: BOARD_PIN,CPU_PIN
+                        parts = line.split(",")
+                        if len(parts) >= 2:
+                            board_pin = parts[0].strip()
+                            cpu_pin = parts[1].strip()
+                            # Skip hidden pins (prefixed with -)
+                            if not board_pin.startswith("-"):
+                                # Store mapping based on namespace type
+                                if self._column_index == 0:
+                                    # Pin.board: board name → CPU pin
+                                    self._pins[board_pin] = cpu_pin
+                                else:
+                                    # Pin.cpu: CPU pin → CPU pin
+                                    self._pins[cpu_pin] = cpu_pin
+
+                # CSV loaded successfully - use strict mode
+                self._magic_mode = False
+                log.info(
+                    f"Pin.{self._namespace_name} configured with "
+                    f"{len(self._pins)} pins from {pins_csv_path}"
+                )
+
+            except OSError as e:
+                # CSV file not found - fall back to magic mode
+                self._magic_mode = True
+                log.warning(
+                    f"Pin.{self._namespace_name}: Could not load "
+                    f"{pins_csv_path}, using magic mode: {e}"
+                )
+
+        def __getattr__(self, name: str) -> str:
+            """Get a pin name from this namespace
+
+            In strict mode (CSV loaded), only returns defined pins.
+            In magic mode (no CSV), returns any requested name.
+            """
+            if name.startswith("_"):
+                # Don't intercept private attributes
+                raise AttributeError(f"Pin.{self._namespace_name} has no attribute '{name}'")
+            if name in self._pins:
+                return self._pins[name]
+            if self._magic_mode:
+                return name  # Return any requested name
+            raise AttributeError(f"Pin.{self._namespace_name}.{name} not defined in pins.csv")
+
+    class _PinBoard(_PinNamespace):
+        """Board pin names namespace
+
+        Maps board pin names to CPU pin names.
+        Example: Pin.board.SPI5_SCK_NEN returns 'GPIO_AD_08'
+        """
+
+        def __init__(self):
+            super().__init__(column_index=0, namespace_name="board")
+
+        def configure(self, pins_csv_path: Optional[str] = None) -> None:
+            """Configure Pin.board and Pin.cpu with pins from CSV file"""
+            self._load_pins(pins_csv_path)
+            # Also configure cpu namespace
+            Pin.cpu._load_pins(pins_csv_path)  # noqa: F821
+
+    class _PinCPU(_PinNamespace):
+        """CPU pin names namespace
+
+        Maps CPU pin names to themselves (identity mapping).
+        Example: Pin.cpu.GPIO_AD_08 returns 'GPIO_AD_08'
+        """
+
+        def __init__(self):
+            super().__init__(column_index=1, namespace_name="cpu")
+
+    board = _PinBoard()
+    cpu = _PinCPU()
+
     # pylint: disable=redefined-builtin
     def __new__(cls, id, mode=0, pull=0, value=None, drive=0, alt=-1):
         """
