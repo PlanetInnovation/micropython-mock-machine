@@ -41,11 +41,11 @@ from button import is_button_pressed
 def test_button_press():
     # Get the mock pin object
     pin = mock_machine.Pin.pins[0]
-    
+
     # Simulate button not pressed (high)
     pin.value(1)
     assert not is_button_pressed(0)
-    
+
     # Simulate button pressed (low)
     pin.value(0)
     assert is_button_pressed(0)
@@ -63,7 +63,7 @@ class TempSensor:
     def __init__(self, i2c, addr=0x48):
         self.i2c = i2c
         self.addr = addr
-    
+
     def read_temperature(self):
         # Read 2 bytes from register 0x00
         data = self.i2c.readfrom_mem(self.addr, 0x00, 2)
@@ -81,17 +81,17 @@ from temp_sensor import TempSensor
 def test_temperature_reading():
     # Create mock I2C bus
     i2c = I2C(0)
-    
+
     # Create mock device
     device = I2CDevice(addr=0x48, i2c=i2c)
-    
+
     # Set temperature register to 25.5°C (0x19 0x80)
     device.register_values[0x00] = b'\x19\x80'
-    
+
     # Test the driver
     sensor = TempSensor(i2c)
     temp = sensor.read_temperature()
-    
+
     assert temp == 25.5
 ```
 
@@ -108,7 +108,7 @@ class EventCounter:
         self.count = 0
         self.pin = machine.Pin(pin_number, machine.Pin.IN)
         self.pin.irq(trigger=machine.Pin.IRQ_RISING, handler=self._increment)
-    
+
     def _increment(self, pin):
         self.count += 1
 
@@ -120,20 +120,20 @@ from counter import EventCounter
 
 def test_event_counting():
     counter = EventCounter(0)
-    
+
     # Get the mock pin
     pin = mock_machine.Pin.pins[0]
-    
+
     # Simulate events
     pin.value(0)  # Start low
     pin.value(1)  # Rising edge - triggers interrupt
     pin.value(0)  # Falling edge - no trigger
     pin.value(1)  # Rising edge - triggers interrupt
-    
+
     # MicroPython schedules interrupts, so they may not be immediate
     import time
     time.sleep(0.1)
-    
+
     assert counter.count == 2
 ```
 

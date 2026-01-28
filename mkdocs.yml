@@ -81,13 +81,10 @@ nav:
       - Device Classes: api/device-classes.md
   - Examples:
       - I2C Device Testing: examples/i2c-testing.md
-      - SPI Device Testing: examples/spi-testing.md
-      - Pin and Interrupts: examples/pin-testing.md
-      - Complete Test Suite: examples/complete-suite.md
   - Contributing: contributing.md
 
 extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/planetinnovation
-  copyright: Copyright &copy; 2020-2024 Planet Innovation Pty Ltd
+  copyright: Copyright &copy; 2020-2025 Planet Innovation Pty Ltd

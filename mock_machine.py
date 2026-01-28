@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2020-2024 Planet Innovation Pty Ltd
+# Copyright (c) 2020-2025 Planet Innovation Pty Ltd
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -128,9 +128,7 @@ class I2C:
     https://docs.micropython.org/en/latest/library/machine.I2C.html
     """
 
-    def __init__(
-        self, *args, id=None, scl=None, sda=None, freq=400000
-    ):  # pylint: disable=unused-argument,redefined-builtin
+    def __init__(self, *args, id=None, scl=None, sda=None, freq=400000):  # pylint: disable=unused-argument,redefined-builtin
         """
         Construct a new I2C object.
 
@@ -214,9 +212,7 @@ class I2C:
         return self.devices[addr].writeto(buf, stop)
 
     # Memory operations
-    def readfrom_mem(
-        self, addr, memaddr, nbytes, *args, addrsize=8
-    ):  # pylint: disable=unused-argument
+    def readfrom_mem(self, addr, memaddr, nbytes, *args, addrsize=8):  # pylint: disable=unused-argument
         """
         Read nbytes from the peripheral specified by addr, starting at memaddr.
 
@@ -284,7 +280,7 @@ class I2CDevice:
         Returns a bytes object with the data read.
         """
         if len(self.readbuf) < nbytes:
-            raise ValueError(f"Insufficient bytes to read {nbytes=} with readfrom()")
+            raise ValueError(f"Insufficient bytes to read nbytes={nbytes} with readfrom()")
         buf = self.readbuf[:nbytes]
         return buf
 
@@ -324,10 +320,10 @@ class I2CDevice:
         """
         if memaddr not in self.register_values:
             raise IndexError(
-                f"Unknown memory address {memaddr=}",
+                f"Unknown memory address memaddr={memaddr}",
             )
         if len(self.register_values[memaddr]) < nbytes:
-            raise ValueError(f"Insufficient bytes to read {nbytes=} from {memaddr=}")
+            raise ValueError(f"Insufficient bytes to read nbytes={nbytes} from memaddr={memaddr}")
         buf = self.register_values[memaddr][:nbytes]
         return buf
 
@@ -342,10 +338,12 @@ class I2CDevice:
         """
         if memaddr not in self.register_values:
             raise IndexError(
-                f"Unknown memory address {memaddr=:x}",
+                f"Unknown memory address memaddr=0x{memaddr:x}",
             )
         if len(self.register_values[memaddr]) < len(buf):
-            raise ValueError(f"Insufficient bytes to read {len(buf)=} from {memaddr=}")
+            raise ValueError(
+                f"Insufficient bytes to read len(buf)={len(buf)} from memaddr={memaddr}"
+            )
         buf[:] = self.register_values[memaddr][: len(buf)]
 
     def writeto_mem(self, memaddr, buf):
@@ -531,7 +529,7 @@ class Pin:
                 self._magic_mode = False
                 log.info(
                     f"Pin.{self._namespace_name} configured with "
-                    f"{len(self._pins)} pins from {pins_csv_path}"
+                    + f"{len(self._pins)} pins from {pins_csv_path}"
                 )
 
             except OSError as e:
@@ -539,7 +537,7 @@ class Pin:
                 self._magic_mode = True
                 log.warning(
                     f"Pin.{self._namespace_name}: Could not load "
-                    f"{pins_csv_path}, using magic mode: {e}"
+                    + f"{pins_csv_path}, using magic mode: {e}"
                 )
 
         def __getattr__(self, name: str) -> str:

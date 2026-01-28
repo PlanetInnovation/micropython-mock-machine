@@ -46,18 +46,18 @@ class MockSensor(I2CDevice):
         # Initialize with default values
         self.temperature = 25.0
         self.register_values[0x00] = self._encode_temp()
-    
+
     def _encode_temp(self):
         # Convert temperature to bytes
         raw = int(self.temperature * 100)
         return bytes([raw >> 8, raw & 0xFF])
-    
+
     def writeto_mem(self, memaddr, buf):
         if memaddr == 0x01:  # Config register
             # Handle configuration changes
             self.config = buf[0]
         super().writeto_mem(memaddr, buf)
-    
+
     def set_temperature(self, temp):
         self.temperature = temp
         self.register_values[0x00] = self._encode_temp()
@@ -103,11 +103,11 @@ import time
 
 class MockRTC(I2CDevice):
     """Mock DS3231 RTC device."""
-    
+
     def __init__(self, addr=0x68, i2c=None):
         super().__init__(addr, i2c)
         self.time_offset = 0
-        
+
     def readfrom_mem(self, memaddr, nbytes):
         if memaddr == 0x00 and nbytes >= 7:
             # Return current time as BCD
@@ -123,14 +123,14 @@ class MockRTC(I2CDevice):
             ])
             return bytes(data[:nbytes])
         return super().readfrom_mem(memaddr, nbytes)
-    
+
     def writeto_mem(self, memaddr, buf):
         if memaddr == 0x00 and len(buf) >= 7:
             # Set time from BCD values
             # (Implementation would decode BCD and set time_offset)
             pass
         super().writeto_mem(memaddr, buf)
-    
+
     @staticmethod
     def _to_bcd(val):
         """Convert value to BCD format."""
@@ -142,7 +142,7 @@ class MockRTC(I2CDevice):
 ```python
 class MockSPIFlash:
     """Mock SPI flash memory device."""
-    
+
     def __init__(self, spi, cs_pin, size=1024*1024):
         self.spi = spi
         self.cs = cs_pin
@@ -154,11 +154,11 @@ class MockSPIFlash:
             0x02: self._page_program,
             0x20: self._sector_erase,
         }
-    
+
     def _jedec_id(self, data):
         """Return JEDEC ID."""
         return b'\xEF\x40\x14'  # Example: W25Q80
-    
+
     def _read_data(self, data):
         """Read data from address."""
         if len(data) >= 3:
@@ -166,7 +166,7 @@ class MockSPIFlash:
             # Return data from address
             # (Implementation would handle read)
         return b''
-    
+
     def execute_command(self, cmd_data):
         """Execute SPI command."""
         if cmd_data[0] in self.commands:

@@ -56,43 +56,12 @@ max-complexity = 10
 "manifest.py" = ["F821"]  # "Undefined name" for eg. freeze, include, etc.
 
 [tool.mypy]
+# Ignore missing imports for MicroPython modules
+ignore_missing_imports = true
 
-mypy_path = '''
-tools/typings:
-src/unix/simulation:
-src/libs/microdot/microdot-asyncio:
-src/libs/microdot/src:
-src/libs/simple_config:
-src/libs/testing_support:
-src/libs/custom_logging
-'''
-
-# Allow use of own stubs library in tools/typings
-# https://micropython-stubs.readthedocs.io/en/main/28_mypy.html
-
-use_builtins_fixtures = true
-no_site_packages = true
-
-# Don't check imported (library/stub) modules.
-follow_imports = "skip"
-follow_imports_for_stubs = false
-
-# Note: pre-commit sends all changed files explicitly to mypy,
-# bypassing this exclude setting. Ensure pre-commit settings
-# limit checked files appropriately.
+# Exclude test and example directories from type checking
+# Note: pre-commit config further limits this to only mock_machine.py
 exclude = [
-    'tools/typings/',
-    'src/micropython/',
-    'src/libs/',
+    'test/',
+    'examples/',
 ]
-
-[[tool.mypy.overrides]]
-# Ignore mypy errors in stubs
-module = [
-    'stdlib.os',
-    'pyb',
-    'machine',
-    'uasyncio.*',
-    'manifest',
-]
-ignore_errors = true

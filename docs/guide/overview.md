@@ -118,7 +118,7 @@ import mock_machine
 class TestMyDevice(unittest.TestCase):
     def setUp(self):
         mock_machine.register_as_machine()
-    
+
     def test_device(self):
         # Your tests here
         pass

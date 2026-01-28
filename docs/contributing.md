@@ -16,7 +16,7 @@ We welcome contributions to micropython-mock-machine! This guide will help you g
    # Create virtual environment
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   
+
    # Install development dependencies
    pip install -r requirements-dev.txt
    ```
@@ -25,7 +25,7 @@ We welcome contributions to micropython-mock-machine! This guide will help you g
    ```bash
    # Run all tests
    pytest
-   
+
    # Run with coverage
    pytest --cov=mock_machine
    ```
@@ -60,10 +60,10 @@ def test_your_new_feature():
     """Test description of what you're testing."""
     # Arrange
     mock_machine.register_as_machine()
-    
+
     # Act
     result = your_function()
-    
+
     # Assert
     assert result == expected_value
 ```
@@ -123,11 +123,11 @@ We use `ruff` for formatting and linting:
 # Good
 class MockDevice(I2CDevice):
     """Mock device with clear purpose."""
-    
+
     def __init__(self, addr: int, i2c: I2C) -> None:
         super().__init__(addr, i2c)
         self._initialized = False
-    
+
     def initialize(self) -> bool:
         """Initialize the device."""
         self._initialized = True
@@ -154,15 +154,15 @@ class TestNewFeature(unittest.TestCase):
         """Set up test fixtures."""
         mock_machine.register_as_machine()
         self.device = MockDevice()
-    
+
     def tearDown(self):
         """Clean up after test."""
         mock_machine.Pin.pins.clear()
-    
+
     def test_normal_operation(self):
         """Test normal operation of feature."""
         # Test implementation
-    
+
     def test_error_condition(self):
         """Test how feature handles errors."""
         # Test implementation
@@ -178,19 +178,19 @@ class TestNewFeature(unittest.TestCase):
 ```python
 def read_sensor(addr: int, register: int, length: int) -> bytes:
     """Read data from sensor register.
-    
+
     Args:
         addr: I2C address of the sensor
         register: Register address to read from
         length: Number of bytes to read
-    
+
     Returns:
         Bytes read from the sensor
-    
+
     Raises:
         OSError: If communication fails
         ValueError: If parameters are invalid
-    
+
     Example:
         >>> data = read_sensor(0x68, 0x00, 2)
         >>> temperature = struct.unpack('>h', data)[0]
@@ -210,22 +210,22 @@ Template for new mock class:
 ```python
 class NewHardware:
     """Mock implementation of NewHardware.
-    
+
     Simulates the behavior of [hardware description].
-    
+
     See: https://docs.micropython.org/en/latest/library/machine.NewHardware.html
     """
-    
+
     def __init__(self, id, **kwargs):
         """Initialize the mock hardware."""
         self._id = id
         self._state = "initialized"
         # Store configuration
-        
+
     def method(self, param):
         """Implement hardware method."""
         # Implementation
-        
+
     # Testing helpers (not in real API)
     def _get_state(self):
         """Get internal state for testing."""

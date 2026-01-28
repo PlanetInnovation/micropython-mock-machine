@@ -12,17 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pre-commit
-    
+
     - name: Run pre-commit
       run: pre-commit run --all-files --show-diff-on-failure
 
@@ -33,27 +33,13 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
+
+    - name: Run tests in MicroPython container
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov
-    
-    - name: Run tests
-      run: |
-        python -m pytest test/ -v --cov=mock_machine --cov-report=xml --cov-report=term
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      if: github.event_name == 'push'
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
+        docker run --rm -v $PWD:/workspace -w /workspace \
+          -e MICROPYPATH=.:/root/.micropython/lib:.frozen \
+          micropython/unix:v1.23.0 \
+          sh -c "micropython -m mip install unittest logging && micropython test/test_mock_machine.py && micropython test/test_example_hardware_revision.py && micropython test/test_example_tmp117.py"
 
   docs:
     name: Build Documentation
@@ -61,22 +47,22 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-docs.txt
-    
+
     - name: Build documentation
       run: mkdocs build --strict
-    
+
     - name: Upload docs artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: site/
@@ -89,24 +75,28 @@ jobs:
     permissions:
       pages: write
       id-token: write
+      contents: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - name: Download docs artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: documentation
         path: site/
-    
+
     - name: Setup Pages
-      uses: actions/configure-pages@v3
-    
+      uses: actions/configure-pages@v5
+      continue-on-error: true
+
     - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
+      continue-on-error: true
       with:
         path: site/
-    
+
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@v4
+      continue-on-error: true

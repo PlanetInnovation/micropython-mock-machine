@@ -13,32 +13,32 @@ Currently `mock_machine` implements:
   - `readfrom`, `readfrom_into`, `writeto`
   - `readfrom_mem`, `readfrom_mem_into`, `writeto_mem`
   - `add_device` (for simulating multiple devices on the bus)
-  
+
 - **SPI** - Serial Peripheral Interface
   - `init`, `deinit`
   - `read`, `readinto`, `write`, `write_readinto`
-  
+
 - **Pin** - Digital I/O pins
   - `init`, `value`, `on`, `off`, `high`, `low`
   - `irq` with IRQ_RISING and IRQ_FALLING triggers
   - `mode` configuration
   - `Pin.board` and `Pin.cpu` namespaces for pin name resolution
-  
+
 - **ADC** - Analog to Digital Converter
   - `read_u16`
-  
+
 - **PWM** - Pulse Width Modulation
   - Frequency and duty cycle control
-  
+
 - **UART** - Universal Asynchronous Receiver/Transmitter
   - Read/write operations with buffering
-  
+
 - **Timer** - Hardware timers
   - Periodic and one-shot modes
-  
+
 - **WDT** - Watchdog Timer
   - Timeout and feed operations
-  
+
 - **RTC** - Real Time Clock
   - Wakeup alarms and datetime
 

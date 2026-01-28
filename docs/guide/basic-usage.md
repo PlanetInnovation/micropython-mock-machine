@@ -27,7 +27,7 @@ value = pin_in.value()  # Read pin state
 ```python
 # Supported modes
 pin = machine.Pin(0, machine.Pin.OUT)         # Output
-pin = machine.Pin(1, machine.Pin.IN)          # Input  
+pin = machine.Pin(1, machine.Pin.IN)          # Input
 pin = machine.Pin(2, machine.Pin.OPEN_DRAIN)  # Open drain
 pin = machine.Pin(3, machine.Pin.ALT)         # Alternate function
 
@@ -67,7 +67,7 @@ devices = i2c.scan()  # Returns list of addresses
 # Read from device
 data = i2c.readfrom(0x50, 10)  # Read 10 bytes from address 0x50
 
-# Write to device  
+# Write to device
 i2c.writeto(0x50, b'Hello')  # Write bytes to address 0x50
 
 # Memory operations
@@ -101,11 +101,11 @@ assert who_am_i == b'\x1A'
 ```python
 class MockSensor(I2CDevice):
     """Custom I2C device with dynamic behavior."""
-    
+
     def __init__(self, addr, i2c):
         super().__init__(addr, i2c)
         self.temperature = 25.0
-        
+
     def readfrom_mem(self, memaddr, nbytes):
         if memaddr == 0x00:  # Temperature register
             # Convert temperature to bytes
